@@ -1,43 +1,45 @@
-#include <stdio.h>
-#include <stdlib.h>
+#!/bin/bash
 
-void add_expense(char* filename) {
-        FILE* f = fopen(filename, "a");
-        char date[20], cat[50], sum[20], desc[100];
+if [ $# -ne 1 ]; then
+    echo "Использование: $0 <имя_файла>"
+    exit 1
+fi
 
-        printf("Дата: "); fgets(date, 20, stdin);
-        printf("Категория: "); fgets(cat, 50, stdin);
-        printf("Сумма: "); fgets(sum, 20, stdin);
-        printf("Описание: "); fgets(desc, 100, stdin);
+filename=$1
 
-        fprintf(f, "%s|%s|%s|%s", date, cat, sum, desc);
-        fclose(f);
-        printf("Добавлено!\n");
+add_expense() {
+    echo -n "Введите дату: "; read date
+    echo -n "Введите категорию: "; read category
+    echo -n "Введите сумму: "; read amount
+    echo -n "Введите описание: "; read description
+    
+    echo "$date|$category|$amount|$description" >> "$filename"
+    echo "Запись добавлена!"
 }
 
-void view_expenses(char* filename) {
-        FILE* f = fopen(filename, "r");
-        if (!f) return;
-
-        char line[256];
-        while (fgets(line, 256, f)) {
-                printf("%s", line);
-        }
-        fclose(f);
+view_expenses() {
+    if [ ! -f "$filename" ]; then
+        echo "Файл не существует"
+        return
+    fi
+    
+    echo "=== ЗАПИСИ О РАСХОДАХ ==="
+    cat "$filename"
+    echo "=========================="
 }
 
-int main(int argc, char* argv[]) {
-        if (argc != 2) return 1;
-
-        int choice;
-        while (1) {
-                printf("1-Добавить 2-Просмотреть 3-Выход: ");
-                scanf("%d", &choice);
-                getchar();
-
-                if (choice == 1) add_expense(argv[1]);
-                else if (choice == 2) view_expenses(argv[1]);
-                else if (choice == 3) break;
-        }
-        return 0;
-}
+while true; do
+    echo "1 - Добавить запись"
+    echo "2 - Просмотреть записи"
+    echo "3 - Выйти"
+    echo -n "Выберите действие: "
+    read choice
+    
+    case $choice in
+        1) add_expense ;;
+        2) view_expenses ;;
+        3) exit 0 ;;
+        *) echo "Неверный выбор" ;;
+    esac
+    echo
+done
