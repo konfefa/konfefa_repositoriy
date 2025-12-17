@@ -1,7 +1,25 @@
 #include "alixpress.h"
 #include <stdio.h>
+#include <string.h>
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc > 1) {
+        strncpy(FILE_NAME, argv[1], sizeof(FILE_NAME) - 1);
+        FILE_NAME[sizeof(FILE_NAME) - 1] = '\0';
+    } else {
+        printf("Введите имя файла базы данных (по умолчанию: db.bin): ");
+        char input[100];
+        fgets(input, sizeof(input), stdin);
+        input[strcspn(input, "\n")] = 0;
+        
+        if (strlen(input) > 0) {
+            strncpy(FILE_NAME, input, sizeof(FILE_NAME) - 1);
+            FILE_NAME[sizeof(FILE_NAME) - 1] = '\0';
+        }
+    }
+    
+    printf("Используется база данных: %s\n", FILE_NAME);
+    
     Arr *db = create_arr(10);
     load(db);
     int ch;
@@ -12,6 +30,8 @@ int main() {
     do {
         menu();
         scanf("%d", &ch);
+        getchar();
+        
         switch(ch) {
             case 1: show_all(db); break;
             case 2:

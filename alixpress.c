@@ -2,6 +2,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+
+char FILE_NAME[100] = "db.bin";
+
+int read_int(const char* prompt, int min_val, int max_val) {
+    int value;
+    char input[100];
+    
+    while (1) {
+        printf("%s", prompt);
+        fgets(input, sizeof(input), stdin);
+        
+        if (sscanf(input, "%d", &value) == 1) {
+            if (value >= min_val && value <= max_val) {
+                return value;
+            } else {
+                printf("Ошибка: число должно быть от %d до %d\n", min_val, max_val);
+            }
+        } else {
+            printf("Ошибка: введите целое число\n");
+        }
+    }
+}
+
+float read_float(const char* prompt, float min_val) {
+    float value;
+    char input[100];
+    
+    while (1) {
+        printf("%s", prompt);
+        fgets(input, sizeof(input), stdin);
+        
+        if (sscanf(input, "%f", &value) == 1) {
+            if (value >= min_val) {
+                return value;
+            } else {
+                printf("Ошибка: число должно быть >= %.2f\n", min_val);
+            }
+        } else {
+            printf("Ошибка: введите число\n");
+        }
+    }
+}
+
+void read_string(const char* prompt, char* buffer, int max_len) {
+    printf("%s", prompt);
+    fgets(buffer, max_len, stdin);
+    buffer[strcspn(buffer, "\n")] = 0;
+}
 
 Arr* create_arr(int cap) {
     Arr *a = malloc(sizeof(Arr));
@@ -39,7 +88,10 @@ Item* get_item(Arr *a, int idx) {
 
 void save(Arr *a) {
     FILE *f = fopen(FILE_NAME, "wb");
-    if (!f) return;
+    if (!f) {
+        printf("Ошибка сохранения в файл %s\n", FILE_NAME);
+        return;
+    }
     fwrite(&a->size, sizeof(int), 1, f);
     fwrite(a->data, sizeof(Item), a->size, f);
     fclose(f);
@@ -47,7 +99,10 @@ void save(Arr *a) {
 
 void load(Arr *a) {
     FILE *f = fopen(FILE_NAME, "rb");
-    if (!f) return;
+    if (!f) {
+        printf("Файл %s не найден. Создана новая база.\n", FILE_NAME);
+        return;
+    }
     int s;
     fread(&s, sizeof(int), 1, f);
     for (int i = 0; i < s; i++) {
@@ -102,22 +157,18 @@ void find_cat(Arr *a, char *cat) {
     }
     if (!f) printf("Нет\n");
 }
-
 static int next_id = 1;
 
 void add_new(Arr *a) {
     Item new;
     new.id = next_id++;
-    printf("Название: ");
-    scanf(" %[^\n]", new.name);
-    printf("Цена: ");
-    scanf("%f", &new.price);
-    printf("Рейтинг 1-5: ");
-    scanf("%d", &new.rating);
-    printf("Категория: ");
-    scanf(" %[^\n]", new.cat);
-    printf("Склад: ");
-    scanf("%d", &new.stock);
+    
+    read_string("Название: ", new.name, sizeof(new.name));
+    new.price = read_float("Цена: ", 0.0);
+    new.rating = read_int("Рейтинг 1-5: ", 1, 5);
+    read_string("Категория: ", new.cat, sizeof(new.cat));
+    new.stock = read_int("Склад: ", 0, 10000);
+    
     add_item(a, new);
     save(a);
     printf("Добавлено\n");
@@ -125,9 +176,8 @@ void add_new(Arr *a) {
 
 void delete_item(Arr *a) {
     show_all(a);
-    printf("ID для удаления: ");
-    int id;
-    scanf("%d", &id);
+    int id = read_int("ID для удаления: ", 1, 10000);
+    
     for (int i = 0; i < a->size; i++) {
         Item *it = get_item(a, i);
         if (it->id == id) {
@@ -142,35 +192,28 @@ void delete_item(Arr *a) {
 
 void edit_item(Arr *a) {
     show_all(a);
-    printf("ID для правки: ");
-    int id;
-    scanf("%d", &id);
+    int id = read_int("ID для правки: ", 1, 10000);
+    
     for (int i = 0; i < a->size; i++) {
         Item *it = get_item(a, i);
         if (it->id == id) {
             char tmp[100];
-            printf("Название (пусто=оставить): ");
-            getchar();
-            fgets(tmp, 100, stdin);
-            tmp[strcspn(tmp, "\n")] = 0;
+            
+            read_string("Название (пусто=оставить): ", tmp, sizeof(tmp));
             if (strlen(tmp) > 0) strcpy(it->name, tmp);
-            printf("Цена (0=оставить): ");
-            float p;
-            scanf("%f", &p);
+            
+            float p = read_float("Цена (0=оставить): ", 0.0);
             if (p > 0) it->price = p;
-            printf("Рейтинг (0=оставить): ");
-            int r;
-            scanf("%d", &r);
+            
+            int r = read_int("Рейтинг (0=оставить): ", 0, 5);
             if (r >= 1 && r <= 5) it->rating = r;
-            printf("Категория (пусто=оставить): ");
-            getchar();
-            fgets(tmp, 50, stdin);
-            tmp[strcspn(tmp, "\n")] = 0;
+            
+            read_string("Категория (пусто=оставить): ", tmp, sizeof(tmp));
             if (strlen(tmp) > 0) strcpy(it->cat, tmp);
-            printf("Склад (-1=оставить): ");
-            int s;
-            scanf("%d", &s);
+            
+            int s = read_int("Склад (-1=оставить): ", -1, 10000);
             if (s >= 0) it->stock = s;
+            
             save(a);
             printf("Сохранено\n");
             return;

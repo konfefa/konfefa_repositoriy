@@ -34,4 +34,8 @@ void delete_item(Arr *a);
 void edit_item(Arr *a);
 void menu();
 
+int read_int(const char* prompt, int min_val, int max_val);
+float read_float(const char* prompt, float min_val);
+void read_string(const char* prompt, char* buffer, int max_len);
+
 #endif
