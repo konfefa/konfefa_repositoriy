@@ -3,9 +3,11 @@
 #include <string.h>
 
 int main(int argc, char *argv[]) {
+    char filename[100] = "db.bin"; 
+    
     if (argc > 1) {
-        strncpy(FILE_NAME, argv[1], sizeof(FILE_NAME) - 1);
-        FILE_NAME[sizeof(FILE_NAME) - 1] = '\0';
+        strncpy(filename, argv[1], sizeof(filename) - 1);
+        filename[sizeof(filename) - 1] = '\0';
     } else {
         printf("Введите имя файла базы данных (по умолчанию: db.bin): ");
         char input[100];
@@ -13,15 +15,16 @@ int main(int argc, char *argv[]) {
         input[strcspn(input, "\n")] = 0;
         
         if (strlen(input) > 0) {
-            strncpy(FILE_NAME, input, sizeof(FILE_NAME) - 1);
-            FILE_NAME[sizeof(FILE_NAME) - 1] = '\0';
+            strncpy(filename, input, sizeof(filename) - 1);
+            filename[sizeof(filename) - 1] = '\0';
         }
     }
     
-    printf("Используется база данных: %s\n", FILE_NAME);
+    printf("Используется база данных: %s\n", filename);
     
     Arr *db = create_arr(10);
-    load(db);
+    load(db, filename);
+    
     int ch;
     char s[100];
     float min, max;
@@ -29,8 +32,11 @@ int main(int argc, char *argv[]) {
     
     do {
         menu();
-        scanf("%d", &ch);
-        getchar();
+        if (scanf("%d", &ch) != 1) {
+            printf("Ошибка ввода!\n");
+            while (getchar() != '\n');
+            continue;
+        }
         
         switch(ch) {
             case 1: show_all(db); break;
@@ -51,15 +57,16 @@ int main(int argc, char *argv[]) {
                 scanf(" %[^\n]", cat);
                 find_cat(db, cat);
                 break;
-            case 5: add_new(db); break;
-            case 6: delete_item(db); break;
-            case 7: edit_item(db); break;
+            case 5: add_new(db, filename); break;      
+            case 6: delete_item(db, filename); break;
+            case 7: edit_item(db, filename); break;
             case 8:
-                save(db);
+                save(db, filename); 
                 printf("Выход\n");
                 break;
             default: printf("Нет\n");
         }
+        while (getchar() != '\n'); 
     } while (ch != 8);
     
     free_arr(db);

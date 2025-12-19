@@ -1,8 +1,12 @@
 all:
-	gcc main.c alixpress.c -o app
+	gcc dz6.c alixpress.c -o app
 
 clean:
-	rm -f app db.bin
+	rm -f app *.bin
 
 run:
 	./app
+
+run_with_db:
+	./app mydatabase.bin
+
