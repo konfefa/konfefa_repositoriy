@@ -4,7 +4,6 @@
 #include <string.h>
 #include <ctype.h>
 
-// Функция для чтения целого числа с проверкой
 int read_int(const char* prompt, int min_val, int max_val) {
     int value;
     char input[100];
@@ -25,7 +24,7 @@ int read_int(const char* prompt, int min_val, int max_val) {
     }
 }
 
-// Функция для чтения числа с плавающей точкой с проверкой
+
 float read_float(const char* prompt, float min_val) {
     float value;
     char input[100];
@@ -46,7 +45,6 @@ float read_float(const char* prompt, float min_val) {
     }
 }
 
-// Функция для чтения строки
 void read_string(const char* prompt, char* buffer, int max_len) {
     printf("%s", prompt);
     fgets(buffer, max_len, stdin);
@@ -87,7 +85,7 @@ Item* get_item(Arr *a, int idx) {
     return &a->data[idx];
 }
 
-void save(Arr *a, const char *filename) {  // изменено
+void save(Arr *a, const char *filename) {
     FILE *f = fopen(filename, "wb");
     if (!f) {
         printf("Ошибка сохранения в файл %s\n", filename);
@@ -98,7 +96,7 @@ void save(Arr *a, const char *filename) {  // изменено
     fclose(f);
 }
 
-void load(Arr *a, const char *filename) {  // изменено
+void load(Arr *a, const char *filename) {  
     FILE *f = fopen(filename, "rb");
     if (!f) {
         printf("Файл %s не найден. Создана новая база.\n", filename);
@@ -161,7 +159,7 @@ void find_cat(Arr *a, char *cat) {
 
 static int next_id = 1;
 
-void add_new(Arr *a, const char *filename) {  // изменено
+void add_new(Arr *a, const char *filename) {  
     Item new;
     new.id = next_id++;
     
@@ -172,11 +170,11 @@ void add_new(Arr *a, const char *filename) {  // изменено
     new.stock = read_int("Склад: ", 0, 10000);
     
     add_item(a, new);
-    save(a, filename);  // изменено
+    save(a, filename);  
     printf("Добавлено\n");
 }
 
-void delete_item(Arr *a, const char *filename) {  // изменено
+void delete_item(Arr *a, const char *filename) { 
     show_all(a);
     int id = read_int("ID для удаления: ", 1, 10000);
     
@@ -184,7 +182,7 @@ void delete_item(Arr *a, const char *filename) {  // изменено
         Item *it = get_item(a, i);
         if (it->id == id) {
             remove_item(a, i);
-            save(a, filename);  // изменено
+            save(a, filename);  
             printf("Удалено\n");
             return;
         }
@@ -192,7 +190,7 @@ void delete_item(Arr *a, const char *filename) {  // изменено
     printf("Не найден\n");
 }
 
-void edit_item(Arr *a, const char *filename) {  // изменено
+void edit_item(Arr *a, const char *filename) { 
     show_all(a);
     int id = read_int("ID для правки: ", 1, 10000);
     
@@ -216,7 +214,7 @@ void edit_item(Arr *a, const char *filename) {  // изменено
             int s = read_int("Склад (-1=оставить): ", -1, 10000);
             if (s >= 0) it->stock = s;
             
-            save(a, filename);  // изменено
+            save(a, filename); 
             printf("Сохранено\n");
             return;
         }
