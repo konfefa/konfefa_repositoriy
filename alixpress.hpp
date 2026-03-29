@@ -1,22 +1,39 @@
 #ifndef ALIXPRESS_HPP
 #define ALIXPRESS_HPP
 
-#include <string>
-#include <vector>
+const int MAX_NAME_LEN = 100;
+const int MAX_CAT_LEN = 50;
 
 struct Item {
     int id;
-    std::string name;
+    char name[MAX_NAME_LEN];
     double price;
     int rating;
-    std::string category;
+    char category[MAX_CAT_LEN];
     int stock;
+};
+
+class MyVector {
+private:
+    Item* data;
+    int size;
+    int capacity;
+    
+public:
+    MyVector();
+    ~MyVector();
+    void push_back(const Item& item);
+    void remove_at(int index);
+    Item& operator[](int index);
+    const Item& operator[](int index) const;
+    int get_size() const;
+    void clear();
 };
 
 class AlixpressDB {
 private:
-    std::vector<Item> items;
-    std::string filename;
+    MyVector items;
+    char filename[100];
     int nextId;
     
     void saveToFile();
@@ -24,22 +41,21 @@ private:
     int findIndexById(int id) const;
     
 public:
-    AlixpressDB(const std::string& filename = "db.bin");
+    AlixpressDB(const char* fname);
     ~AlixpressDB();
     
     void showAll() const;
-    void findByName(const std::string& name) const;
+    void findByName(const char* name) const;
     void findByPrice(double min, double max) const;
-    void findByCategory(const std::string& category) const;
+    void findByCategory(const char* category) const;
     void addNew();
     void deleteItem();
     void editItem();
-    
     void run();
 };
 
-int readInt(const std::string& prompt, int minVal, int maxVal);
-double readDouble(const std::string& prompt, double minVal);
-std::string readString(const std::string& prompt);
+int readInt(const char* prompt, int minVal, int maxVal);
+double readDouble(const char* prompt, double minVal);
+void readString(const char* prompt, char* buffer, int maxLen);
 
 #endif

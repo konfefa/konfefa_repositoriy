@@ -1,62 +1,109 @@
 #include "alixpress.hpp"
 #include <iostream>
 #include <fstream>
-#include <algorithm>
 #include <iomanip>
+#include <cstring>
 #include <limits>
 
 using namespace std;
 
-int readInt(const string& prompt, int minVal, int maxVal) {
+int readInt(const char* prompt, int minVal, int maxVal) {
     int value;
+    char input[100];
+    
     while (true) {
-        cout << prompt;
-        cin >> value;
+        cout <<   prompt;
+        cin.getline(input, 100);
         
-        if (cin.fail()) {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Ошибка: введите целое число\n";
-        } else if (value >= minVal && value <= maxVal) {
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            return value;
+        if (sscanf(input, "%d", &value) == 1) {
+            if (value >= minVal && value <= maxVal) {
+                return value;
+            } else {
+                cout <<   "Ошибка: число должно быть от " <<   minVal <<   " до " <<   maxVal <<   "\n";
+            }
         } else {
-            cout << "Ошибка: число должно быть от " << minVal << " до " << maxVal << "\n";
+            cout <<   "Ошибка: введите целое число\n";
         }
     }
 }
 
-double readDouble(const string& prompt, double minVal) {
+double readDouble(const char* prompt, double minVal) {
     double value;
+    char input[100];
+    
     while (true) {
-        cout << prompt;
-        cin >> value;
+        cout <<   prompt;
+        cin.getline(input, 100);
         
-        if (cin.fail()) {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Ошибка: введите число\n";
-        } else if (value >= minVal) {
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            return value;
+        if (sscanf(input, "%lf", &value) == 1) {
+            if (value >= minVal) {
+                return value;
+            } else {
+                cout <<   "Ошибка: число должно быть >= " <<   minVal <<   "\n";
+            }
         } else {
-            cout << "Ошибка: число должно быть >= " << minVal << "\n";
+            cout <<   "Ошибка: введите число\n";
         }
     }
 }
 
-string readString(const string& prompt) {
-    string value;
-    cout << prompt;
-    getline(cin, value);
-    return value;
+void readString(const char* prompt, char* buffer, int maxLen) {
+    cout <<   prompt;
+    cin.getline(buffer, maxLen);
 }
 
-AlixpressDB::AlixpressDB(const string& fname) : filename(fname), nextId(1) {
+MyVector::MyVector() : size(0), capacity(10) {
+    data = new Item[capacity];
+}
+
+MyVector::~MyVector() {
+    delete[] data;
+}
+
+void MyVector::push_back(const Item& item) {
+    if (size >= capacity) {
+        capacity *= 2;
+        Item* newData = new Item[capacity];
+        for (int i = 0; i < size; i++) {
+            newData[i] = data[i];
+        }
+        delete[] data;
+        data = newData;
+    }
+    data[size++] = item;
+}
+
+void MyVector::remove_at(int index) {
+    if (index < 0 || index >= size) return;
+    for (int i = index; i < size - 1; i++) {
+        data[i] = data[i + 1];
+    }
+    size--;
+}
+
+Item& MyVector::operator[](int index) {
+    return data[index];
+}
+
+const Item& MyVector::operator[](int index) const {
+    return data[index];
+}
+
+int MyVector::get_size() const {
+    return size;
+}
+
+void MyVector::clear() {
+    size = 0;
+}
+
+AlixpressDB::AlixpressDB(const char* fname) : nextId(1) {
+    strncpy(filename, fname, 99);
+    filename[99] = '\0';
     loadFromFile();
-    for (const auto& item : items) {
-        if (item.id >= nextId) {
-            nextId = item.id + 1;
+    for (int i = 0; i < items.get_size(); i++) {
+        if (items[i].id >= nextId) {
+            nextId = items[i].id + 1;
         }
     }
 }
@@ -68,26 +115,21 @@ AlixpressDB::~AlixpressDB() {
 void AlixpressDB::saveToFile() {
     ofstream file(filename, ios::binary);
     if (!file) {
-        cout << "Ошибка сохранения в файл " << filename << "\n";
+        cout <<   "Ошибка сохранения в файл " <<   filename <<   "\n";
         return;
     }
     
-    size_t size = items.size();
+    int size = items.get_size();
     file.write(reinterpret_cast<const char*>(&size), sizeof(size));
     
-    for (const auto& item : items) {
+    for (int i = 0; i < size; i++) {
+        const Item& item = items[i];
         file.write(reinterpret_cast<const char*>(&item.id), sizeof(item.id));
         file.write(reinterpret_cast<const char*>(&item.price), sizeof(item.price));
         file.write(reinterpret_cast<const char*>(&item.rating), sizeof(item.rating));
         file.write(reinterpret_cast<const char*>(&item.stock), sizeof(item.stock));
-        
-        size_t len = item.name.length();
-        file.write(reinterpret_cast<const char*>(&len), sizeof(len));
-        file.write(item.name.c_str(), len);
-        
-        len = item.category.length();
-        file.write(reinterpret_cast<const char*>(&len), sizeof(len));
-        file.write(item.category.c_str(), len);
+        file.write(item.name, MAX_NAME_LEN);
+        file.write(item.category, MAX_CAT_LEN);
     }
     
     file.close();
@@ -96,109 +138,103 @@ void AlixpressDB::saveToFile() {
 void AlixpressDB::loadFromFile() {
     ifstream file(filename, ios::binary);
     if (!file) {
-        cout << "Файл " << filename << " не найден. Создана новая база.\n";
+        cout <<   "Файл " <<   filename <<   " не найден. Создана новая база.\n";
         return;
     }
     
-    size_t size;
+    int size;
     file.read(reinterpret_cast<char*>(&size), sizeof(size));
     
     items.clear();
-    items.reserve(size);
     
-    for (size_t i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         Item item;
-        
         file.read(reinterpret_cast<char*>(&item.id), sizeof(item.id));
         file.read(reinterpret_cast<char*>(&item.price), sizeof(item.price));
         file.read(reinterpret_cast<char*>(&item.rating), sizeof(item.rating));
         file.read(reinterpret_cast<char*>(&item.stock), sizeof(item.stock));
-        
-        size_t len;
-        file.read(reinterpret_cast<char*>(&len), sizeof(len));
-        item.name.resize(len);
-        file.read(&item.name[0], len);
-        
-        file.read(reinterpret_cast<char*>(&len), sizeof(len));
-        item.category.resize(len);
-        file.read(&item.category[0], len);
-        
-        items.push_back(item);
+        file.read(item.name, MAX_NAME_LEN);
+	file.read(item.category, MAX_CAT_LEN);
+	        items.push_back(item);
     }
     
     file.close();
 }
 
 int AlixpressDB::findIndexById(int id) const {
-    for (size_t i = 0; i < items.size(); i++) {
+    for (int i = 0; i < items.get_size(); i++) {
         if (items[i].id == id) {
-            return static_cast<int>(i);
+            return i;
         }
     }
     return -1;
 }
 
 void AlixpressDB::showAll() const {
-    cout << "\nВсего товаров: " << items.size() << "\n";
-    cout << string(80, '-') << "\n";
+    cout <<   "\nВсего товаров: " <<   items.get_size() <<   "\n";
+    cout <<   string(80, '-') <<   "\n";
     
-    for (const auto& item : items) {
-        cout << item.id << ". "
-             << item.name << " | $"
-             << fixed << setprecision(2) << item.price
-             << " | " << item.rating << "/5"
-             << " | " << item.category
-             << " | Склад: " << item.stock << "\n";
+    for (int i = 0; i < items.get_size(); i++) {
+        const Item& item = items[i];
+        cout <<   item.id <<   ". "
+             <<   item.name <<   " | $"
+             <<   fixed <<   setprecision(2) <<   item.price
+             <<   " | " <<   item.rating <<   "/5"
+             <<   " | " <<   item.category
+             <<   " | Склад: " <<   item.stock <<   "\n";
     }
-    cout << string(80, '-') << "\n";
+    cout <<   string(80, '-') <<   "\n";
 }
 
-void AlixpressDB::findByName(const string& name) const {
+void AlixpressDB::findByName(const char* name) const {
     bool found = false;
-    for (const auto& item : items) {
-        if (item.name.find(name) != string::npos) {
-            cout << item.id << ". " << item.name << " | $" << fixed << setprecision(2) << item.price << "\n";
+    for (int i = 0; i < items.get_size(); i++) {
+        const Item& item = items[i];
+        if (strstr(item.name, name) != nullptr) {
+            cout <<   item.id <<   ". " <<   item.name <<   " | $" <<   fixed <<   setprecision(2) <<   item.price <<   "\n";
             found = true;
         }
     }
-    if (!found) cout << "Товары не найдены\n";
+    if (!found) cout <<   "Товары не найдены\n";
 }
 
 void AlixpressDB::findByPrice(double min, double max) const {
     bool found = false;
-    for (const auto& item : items) {
+    for (int i = 0; i < items.get_size(); i++) {
+        const Item& item = items[i];
         if (item.price >= min && item.price <= max) {
-            cout << item.id << ". " << item.name << " | $" << fixed << setprecision(2) << item.price << "\n";
+            cout <<   item.id <<   ". " <<   item.name <<   " | $" <<   fixed <<   setprecision(2) <<   item.price <<   "\n";
             found = true;
         }
     }
-    if (!found) cout << "Товары не найдены\n";
+    if (!found) cout <<   "Товары не найдены\n";
 }
 
-void AlixpressDB::findByCategory(const string& category) const {
+void AlixpressDB::findByCategory(const char* category) const {
     bool found = false;
-    for (const auto& item : items) {
-        if (item.category == category) {
-            cout << item.id << ". " << item.name << " | $" << fixed << setprecision(2) << item.price << "\n";
+    for (int i = 0; i < items.get_size(); i++) {
+        const Item& item = items[i];
+        if (strcmp(item.category, category) == 0) {
+            cout <<   item.id <<   ". " <<   item.name <<   " | $" <<   fixed <<   setprecision(2) <<   item.price <<   "\n";
             found = true;
         }
     }
-    if (!found) cout << "Товары не найдены\n";
+    if (!found) cout <<   "Товары не найдены\n";
 }
 
 void AlixpressDB::addNew() {
     Item newItem;
     newItem.id = nextId++;
     
-    newItem.name = readString("Название: ");
+    readString("Название: ", newItem.name, MAX_NAME_LEN);
     newItem.price = readDouble("Цена: ", 0.0);
     newItem.rating = readInt("Рейтинг (1-5): ", 1, 5);
-    newItem.category = readString("Категория: ");
+    readString("Категория: ", newItem.category, MAX_CAT_LEN);
     newItem.stock = readInt("Количество на складе: ", 0, 10000);
     
     items.push_back(newItem);
     saveToFile();
-    cout << "Товар добавлен! ID: " << newItem.id << "\n";
+    cout <<   "Товар добавлен! ID: " <<   newItem.id <<   "\n";
 }
 
 void AlixpressDB::deleteItem() {
@@ -207,11 +243,11 @@ void AlixpressDB::deleteItem() {
     
     int index = findIndexById(id);
     if (index != -1) {
-        items.erase(items.begin() + index);
+        items.remove_at(index);
         saveToFile();
-        cout << "Товар удалён\n";
+        cout <<   "Товар удалён\n";
     } else {
-        cout << "Товар с ID " << id << " не найден\n";
+        cout <<   "Товар с ID " <<   id <<   " не найден\n";
     }
 }
 
@@ -221,14 +257,15 @@ void AlixpressDB::editItem() {
     
     int index = findIndexById(id);
     if (index == -1) {
-        cout << "Товар с ID " << id << " не найден\n";
+        cout <<   "Товар с ID " <<   id <<   " не найден\n";
         return;
     }
     
     Item& item = items[index];
+    char tmp[100];
     
-    string tmp = readString("Название (Enter - оставить): ");
-    if (!tmp.empty()) item.name = tmp;
+    readString("Название (Enter - оставить): ", tmp, 100);
+    if (strlen(tmp) > 0) strcpy(item.name, tmp);
     
     double price = readDouble("Цена (0 - оставить): ", 0.0);
     if (price > 0) item.price = price;
@@ -236,48 +273,38 @@ void AlixpressDB::editItem() {
     int rating = readInt("Рейтинг (0 - оставить): ", 0, 5);
     if (rating >= 1 && rating <= 5) item.rating = rating;
     
-    tmp = readString("Категория (Enter - оставить): ");
-    if (!tmp.empty()) item.category = tmp;
+    readString("Категория (Enter - оставить): ", tmp, 100);
+    if (strlen(tmp) > 0) strcpy(item.category, tmp);
     
     int stock = readInt("Склад (-1 - оставить): ", -1, 10000);
     if (stock >= 0) item.stock = stock;
     
     saveToFile();
-    cout << "Изменения сохранены\n";
-}
-
-static void showMenu() {
-    cout << "\n╔══════════════════════════════════╗\n";
-    cout << "║         УПРАВЛЕНИЕ ТОВАРАМИ       ║\n";
-    cout << "╠══════════════════════════════════╣\n";
-    cout << "║ 1. Все товары                    ║\n";
-    cout << "║ 2. Поиск по названию             ║\n";
-    cout << "║ 3. Поиск по цене                 ║\n";
-    cout << "║ 4. Поиск по категории            ║\n";
-    cout << "║ 5. Добавить товар                ║\n";
-    cout << "║ 6. Удалить товар                 ║\n";
-    cout << "║ 7. Редактировать товар           ║\n";
-    cout << "║ 8. Выход                         ║\n";
-    cout << "╚══════════════════════════════════╝\n";
-    cout << "Выбор: ";
+    cout <<   "Изменения сохранены\n";
 }
 
 void AlixpressDB::run() {
     int choice;
-    string searchStr;
+    char searchStr[100];
     double minPrice, maxPrice;
+    char category[50];
     
     do {
-        showMenu();
-        cin >> choice;
+        cout <<   "\n╔══════════════════════════════════╗\n";
+        cout <<   "║УПРАВЛЕНИЕ ТОВАРАМИ               ║\n";
+        cout <<   "╠══════════════════════════════════╣\n";
+        cout <<   "║ 1. Все товары                    ║\n";
+        cout <<   "║ 2. Поиск по названию             ║\n";
+        cout <<   "║ 3. Поиск по цене                 ║\n";
+        cout <<   "║ 4. Поиск по категории            ║\n";
+        cout <<   "║ 5. Добавить товар                ║\n";
+        cout <<   "║ 6. Удалить товар                 ║\n";
+        cout <<   "║ 7. Редактировать товар           ║\n";
+        cout <<   "║ 8. Выход                         ║\n";
+        cout <<   "╚══════════════════════════════════╝\n";
+        cout <<   "Выбор: ";
         
-        if (cin.fail()) {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Ошибка ввода!\n";
-            continue;
-        }
-        
+        cin >>   choice;
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         
         switch (choice) {
@@ -285,7 +312,8 @@ void AlixpressDB::run() {
                 showAll();
                 break;
             case 2:
-                searchStr = readString("Название: ");
+                cout <<   "Название: ";
+                cin.getline(searchStr, 100);
                 findByName(searchStr);
                 break;
             case 3:
@@ -294,8 +322,9 @@ void AlixpressDB::run() {
                 findByPrice(minPrice, maxPrice);
                 break;
             case 4:
-                searchStr = readString("Категория: ");
-                findByCategory(searchStr);
+                cout <<   "Категория: ";
+                cin.getline(category, 50);
+                findByCategory(category);
                 break;
             case 5:
                 addNew();
@@ -307,10 +336,10 @@ void AlixpressDB::run() {
                 editItem();
                 break;
             case 8:
-                cout << "Выход...\n";
+                cout <<   "Выход...\n";
                 break;
             default:
-                cout << "Неверный выбор\n";
+                cout <<   "Неверный выбор\n";
         }
     } while (choice != 8);
 }
